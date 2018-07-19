@@ -1,6 +1,8 @@
 import re
 from collections import OrderedDict
+from dataclasses import dataclass, field
 from types import SimpleNamespace
+from typing import List, Union
 
 
 class classproperty(property):
@@ -20,7 +22,8 @@ class classproperty(property):
         return self.fget(cls)
 
 
-class View(SimpleNamespace):
+@dataclass(frozen=True)
+class View:
     """Transform an :class:`object` into a dict
 
     :param bool defaults: Include attributes of object
@@ -28,17 +31,10 @@ class View(SimpleNamespace):
     :param list exclude: A list of attributes to exclude
     :param bool ordered: Use an :class:`OrderedDict` instead
     """
-
-    def __init__(self, defaults=False, include=None, exclude=None,
-                 ordered=False):
-        if isinstance(include, str):
-            include = [include]
-        include = include or []
-        if isinstance(exclude, str):
-            exclude = [exclude] or []
-        exclude = exclude or []
-        super().__init__(defaults=defaults, include=include, exclude=exclude,
-                         ordered=ordered)
+    defaults: bool = False
+    include: Union[str, List[str]] = field(default_factory=list)
+    exclude: Union[str, List[str]] = field(default_factory=list)
+    ordered: bool = False
 
     def __call__(self, thingy):
         if self.ordered:
@@ -47,7 +43,10 @@ class View(SimpleNamespace):
             d = dict()
         if not isinstance(thingy, Thingy):
             return d
-        for attr in self.include:
+        include = self.include or []
+        if isinstance(include, str):
+            include = [include]
+        for attr in include:
             key = attr
             if isinstance(attr, tuple):
                 attr, key = attr
@@ -55,8 +54,11 @@ class View(SimpleNamespace):
         if self.defaults:
             for key, value in thingy.__dict__.items():
                 d.setdefault(key, value)
-        for field in self.exclude:
-            d.pop(field, None)
+        exclude = self.exclude or []
+        if isinstance(exclude, str):
+            exclude = [exclude]
+        for key in exclude:
+            d.pop(key, None)
         return d
 
 
