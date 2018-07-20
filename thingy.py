@@ -1,7 +1,6 @@
 import re
 from collections import OrderedDict
-
-import six
+from types import SimpleNamespace
 
 
 class classproperty(property):
@@ -21,7 +20,7 @@ class classproperty(property):
         return self.fget(cls)
 
 
-class View(object):
+class View(SimpleNamespace):
     """Transform an :class:`object` into a dict
 
     :param bool defaults: Include attributes of object
@@ -32,14 +31,14 @@ class View(object):
 
     def __init__(self, defaults=False, include=None, exclude=None,
                  ordered=False):
-        self.defaults = defaults
-        if isinstance(include, six.string_types):
+        if isinstance(include, str):
             include = [include]
-        self.include = include or []
-        if isinstance(exclude, six.string_types):
-            exclude = [exclude]
-        self.exclude = exclude or []
-        self.ordered = ordered
+        include = include or []
+        if isinstance(exclude, str):
+            exclude = [exclude] or []
+        exclude = exclude or []
+        super().__init__(defaults=defaults, include=include, exclude=exclude,
+                         ordered=ordered)
 
     def __call__(self, thingy):
         if self.ordered:
@@ -83,8 +82,7 @@ def getclassattr(instance, attr):
             pass
 
 
-@six.add_metaclass(ThingyMetaClass)
-class Thingy(object):
+class Thingy(SimpleNamespace, metaclass=ThingyMetaClass):
     """Allows you to use object notation instead of dict notation"""
     _view_cls = View
     _silent = True
@@ -108,9 +106,6 @@ class Thingy(object):
                 return None
             raise
 
-    def __repr__(self):
-        return "{}({})".format(self.__class__.__name__, self.__dict__)
-
     @classmethod
     def add_view(cls, name, *args, **kwargs):
         cls._views.update({name: cls._view_cls(*args, **kwargs)})
@@ -131,7 +126,7 @@ class Thingy(object):
 names_regex = re.compile("([A-Z]+(?![a-z])|[A-Z][a-z]+)")
 
 
-class NamesMixin(object):
+class NamesMixin:
 
     @classmethod
     def get_names(cls):
